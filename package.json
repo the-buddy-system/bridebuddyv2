@@ -12,7 +12,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node scripts/test-process-claude-payload.js",
     "build": "npm run build:config",
     "preview": "node preview.js",
     "build:config": "node scripts/build-config.js",
