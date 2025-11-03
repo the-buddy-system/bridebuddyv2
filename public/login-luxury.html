@@ -87,6 +87,16 @@
                         Sign In
                     </button>
 
+                    <!-- Verification email prompt -->
+                    <div id="verificationEmailContainer" class="hidden" style="margin-top: var(--space-4);">
+                        <button type="button" class="btn btn-secondary btn-full" id="verificationEmailBtn">
+                            Send verification email
+                        </button>
+                        <p style="text-align: center; margin-top: var(--space-2); font-size: var(--text-xs); color: rgba(70, 32, 38, 0.75);">
+                            Didn't get the confirmation email? We'll send one to the address above.
+                        </p>
+                    </div>
+
                     <!-- Forgot Password Link -->
                     <p style="text-align: center; margin-top: var(--space-4); font-size: var(--text-sm);">
                         <a href="#" id="forgotPasswordLink" style="color: var(--color-burgundy); text-decoration: none; opacity: 0.8;">
@@ -169,6 +179,29 @@
         }
 
         // Handle login form submission
+        const verificationEmailContainer = document.getElementById('verificationEmailContainer');
+        const verificationEmailBtn = document.getElementById('verificationEmailBtn');
+        let lastLoginEmail = '';
+        let verificationEmailSent = false;
+
+        function updateVerificationEmailButtonText() {
+            verificationEmailBtn.textContent = verificationEmailSent
+                ? 'Resend verification email'
+                : 'Send verification email';
+        }
+
+        function hideVerificationEmailPrompt() {
+            verificationEmailContainer.classList.add('hidden');
+            verificationEmailBtn.disabled = false;
+            updateVerificationEmailButtonText();
+        }
+
+        function showVerificationEmailPrompt() {
+            verificationEmailContainer.classList.remove('hidden');
+            verificationEmailBtn.disabled = false;
+            updateVerificationEmailButtonText();
+        }
+
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -177,6 +210,9 @@
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const loginBtn = document.getElementById('loginBtn');
+
+            lastLoginEmail = email;
+            hideVerificationEmailPrompt();
 
             loginBtn.disabled = true;
             loginBtn.innerHTML = '<span class="loading-spinner"></span> Signing in...';
@@ -279,6 +315,8 @@
                 const primaryMember = members[0] || {};
                 const weddingId = primaryMember.wedding_id;
 
+                hideVerificationEmailPrompt();
+
                 // Store session in localStorage immediately
                 storeUserSession(data.user.id, weddingId);
 
@@ -312,6 +350,20 @@
             } catch (error) {
                 console.error('Login error:', error.message);
 
+                const normalizedMessage = (error?.message || '').toLowerCase();
+                const needsEmailConfirmation =
+                    normalizedMessage.includes('email not confirmed') ||
+                    normalizedMessage.includes('email needs to be confirmed') ||
+                    (error?.status === 403 && normalizedMessage.includes('confirm'));
+
+                if (needsEmailConfirmation) {
+                    showToast('Please confirm your email before signing in. Check your inbox or resend the verification email.', 'warning', 6000);
+                    showVerificationEmailPrompt();
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Sign In';
+                    return;
+                }
+
                 // Show detailed error message for debugging
                 let errorMessage = 'Invalid email or password. Please try again.';
                 if (error.message) {
@@ -323,6 +375,37 @@
                 showToast(errorMessage, 'error');
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Sign In';
+            }
+        });
+
+        verificationEmailBtn.addEventListener('click', async () => {
+            const emailInputValue = document.getElementById('email').value.trim();
+            const emailToUse = emailInputValue || lastLoginEmail;
+
+            if (!emailToUse) {
+                showToast('Enter your email above so we know where to send the confirmation link.', 'warning');
+                return;
+            }
+
+            try {
+                verificationEmailBtn.disabled = true;
+                verificationEmailBtn.textContent = 'Sending…';
+
+                const { error } = await supabase.auth.resend({
+                    type: 'signup',
+                    email: emailToUse,
+                });
+
+                if (error) throw error;
+
+                showToast('Verification email sent! Check your inbox to activate your account.', 'success');
+                verificationEmailSent = true;
+            } catch (error) {
+                console.error('Resend verification error:', error);
+                showToast('Unable to resend the verification email. Please try again shortly.', 'error');
+            } finally {
+                verificationEmailBtn.disabled = false;
+                updateVerificationEmailButtonText();
             }
         });
 
@@ -358,6 +441,10 @@
                                    input.closest('.form-group').querySelector('.form-error');
                 if (errorElement) {
                     errorElement.style.display = 'none';
+                }
+                if (input.id === 'email') {
+                    verificationEmailSent = false;
+                    updateVerificationEmailButtonText();
                 }
             });
         });
