@@ -1,3 +1,4 @@
+// Buddy Core: copied directly from Bride Buddy for shared XSS-safe rendering
 // TODO: Verify all helpers remain browser-safe for other Buddies.
 
 /**
