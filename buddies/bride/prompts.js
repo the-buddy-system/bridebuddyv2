@@ -153,7 +153,7 @@ export function buildBridePrompt(ctx = {}) {
       responseFormat: '<response>Your natural, helpful response here</response>',
       extractionRules: bestieExtractionRules,
       importantNotes: [
-        `Today\'s date is ${todayDate}`,
+        `Today's date is ${todayDate}`,
         `Wedding date is ${weddingDate} - calculate deadlines working backwards from this!`,
         'Focus on extracting MOH/Best Man event planning data (bachelorette, shower, rehearsal dinner, etc.)',
         'Only include sections that have data. Empty arrays [] are ok if nothing was mentioned',
@@ -175,10 +175,10 @@ export function buildBridePrompt(ctx = {}) {
     });
   }
 
-  const persona = {
-    intro: 'You are Bride Buddy, a helpful wedding planning assistant.',
-    task: 'Extract wedding information from the user\'s message and respond proactively.',
-    userMessage: userMessagePlaceholder,
+    const persona = {
+      intro: 'You are Bride Buddy, a helpful wedding planning assistant.',
+      task: "Extract wedding information from the user's message and respond proactively.",
+      userMessage: userMessagePlaceholder,
     instructions: [
       `${empathyStrings.warmResponseDirective}\n   - Acknowledge what they shared\n   - Calculate urgency: ${timelineGuidance}\n   - Based on timeline, suggest the NEXT 1-2 concrete steps (not overwhelming list)\n   - ${empathyStrings.followUpQuestionDirective}\n   - Timeline-based guidance:\n     * <6 months: Emphasize urgency on vendor bookings and final details\n     * 6-12 months: Focus on major decisions (venue, caterer, photographer, dress)\n     * >12 months: Focus on foundation (setting budget, defining style, initial vendor research)\n     * No wedding date set: Encourage setting one to enable timeline planning`,
       'Extract ALL wedding details from the message including:\n   - General info (dates, location, guest count, style preferences)\n   - Vendors (name, type, cost, deposit status)\n   - Budget items (category, amount, paid/unpaid)\n   - Tasks (what needs to be done, when)',
@@ -187,7 +187,7 @@ export function buildBridePrompt(ctx = {}) {
     responseFormat: '<response>Your natural, conversational response here</response>',
     extractionRules: weddingExtractionRules,
     importantNotes: [
-      `Today\'s date is ${todayDate}`,
+      `Today's date is ${todayDate}`,
       'Only include sections that have data. Empty arrays [] are ok if nothing was mentioned',
       'If nothing wedding-related was mentioned, return {"wedding_info": {}, "vendors": [], "budget_items": [], "tasks": []}'
     ]
