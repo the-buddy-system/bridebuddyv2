@@ -1,19 +1,15 @@
 // BuddyOS Router — routes chat requests to domain-specific buddy handlers
 
-import { buildCreatorPrompt } from "../buddies/creator/prompts.js";
+import { handleCreatorBuddy } from "./creator-chat.js";
 
 // Handler mapping for different buddy domains
 const handlers = {
   bride: handleBrideBuddy,
-  creator: async (message) => {
-    // Placeholder route for Creator Buddy
-    // TODO: Replace placeholder response with real Creator Buddy chat handler later.
-    return { role: "assistant", content: `Creator Buddy received: ${message}` };
-  },
+  creator: handleCreatorBuddy,
 };
 
 // Placeholder for Bride Buddy handler
-// TODO: Import actual Bride Buddy chat handler
+// TODO: Import actual Bride Buddy chat handler from chat.js
 async function handleBrideBuddy(message) {
   return { role: "assistant", content: `Bride Buddy received: ${message}` };
 }
