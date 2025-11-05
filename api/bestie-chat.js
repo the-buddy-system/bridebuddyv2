@@ -1,11 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
-import { handleCORS, rateLimitMiddleware, RATE_LIMITS } from './_utils/rate-limiter.js';
-
-// Get env vars directly (works in Vercel serverless functions)
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+// import { handleCORS, rateLimitMiddleware, RATE_LIMITS } from './_utils/rate-limiter.js';
+import { handleCORS, rateLimitMiddleware, RATE_LIMITS } from '../buddy-core/middleware/rate_limiter.js';
+import { buildBridePrompt } from '../buddies/bride/prompts.js';
+import { getSupabaseConfig, getAnthropicConfig } from '../buddy-core/config/index.js';
 
 export default async function handler(req, res) {
   // Handle CORS preflight
@@ -27,6 +24,9 @@ export default async function handler(req, res) {
   if (!message || !userToken) {
     return res.status(400).json({ error: 'Message and user token required' });
   }
+
+  const { url: supabaseUrl, anonKey: supabaseAnonKey, serviceRoleKey: supabaseServiceKey } = getSupabaseConfig();
+  const { apiKey: anthropicApiKey } = getAnthropicConfig();
 
   const supabase = createClient(
     supabaseUrl,
@@ -100,36 +100,7 @@ export default async function handler(req, res) {
     }
 
     // Build wedding context for bestie chat with extraction
-    let weddingContext = `You are Bestie Buddy, the AI assistant for the Maid of Honor, Best Man, or Best Friend helping plan wedding events.
-
-YOUR ROLE:
-- Help the MOH/Best Man plan bachelorette/bachelor parties
-- Assist with bridal shower planning
-- Guide engagement party coordination
-- Help manage bridesmaids/groomsmen logistics
-- Track bridesmaid expenses and dress shopping
-- Coordinate rehearsal dinner planning
-- Provide advice on MOH/Best Man duties and etiquette
-
-YOUR CONVERSATIONAL APPROACH (CRITICAL):
-1. **Guide toward concrete next steps**: After each discussion, suggest 2-3 specific tasks with deadlines
-2. **Ask timeline questions**: "When are you thinking of doing this?" "What's the wedding date again?"
-3. **Create urgency**: Calculate backwards from wedding date to suggest when things should happen
-4. **Break down big ideas**: Turn vague ideas like "plan bachelorette party" into specific tasks:
-   - "Book venue by [date]"
-   - "Send invites by [date]"
-   - "Collect RSVPs by [date]"
-5. **Follow up on existing tasks**: Reference incomplete tasks from their profile and ask about progress
-
-PERSONALITY:
-- Friendly, practical, and organized
-- Understanding of the unique pressures of being MOH/Best Man
-- Budget-conscious and creative with party planning
-- Supportive when dealing with difficult bridesmaids or family
-- Use casual language but stay focused on actionable advice
-- **PROACTIVE**: Always end responses by suggesting next concrete steps with dates
-
-CURRENT WEDDING INFORMATION:`;
+    let weddingContext = 'CURRENT WEDDING INFORMATION:';
 
     if (weddingData.wedding_name) weddingContext += `\n- Couple: ${weddingData.wedding_name}`;
     if (weddingData.partner1_name && weddingData.partner2_name) {
@@ -139,6 +110,16 @@ CURRENT WEDDING INFORMATION:`;
     if (weddingData.expected_guest_count) weddingContext += `\n- Expected Guests: ${weddingData.expected_guest_count}`;
     if (weddingData.total_budget) weddingContext += `\n- Total Budget: $${weddingData.total_budget}`;
     if (weddingData.wedding_style) weddingContext += `\n- Style: ${weddingData.wedding_style}`;
+
+    const todayDate = new Date().toISOString().split('T')[0];
+
+    const promptContent = buildBridePrompt({
+      variant: 'bestie',
+      domainContext: weddingContext,
+      userMessagePlaceholder: message,
+      todayDate,
+      weddingDate: weddingData.wedding_date || 'unknown'
+    });
 
     // CALL CLAUDE with enhanced bestie extraction prompt
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
@@ -153,78 +134,7 @@ CURRENT WEDDING INFORMATION:`;
         max_tokens: 3072,
         messages: [{
           role: 'user',
-          content: `${weddingContext}
-
-TASK: Help the Maid of Honor/Best Man with their wedding planning duties, event coordination, AND actively guide them toward creating concrete tasks with deadlines.
-
-USER MESSAGE: "${message}"
-
-INSTRUCTIONS:
-1. Provide practical, actionable advice for MOH/Best Man responsibilities
-2. Help plan bachelorette parties, bridal showers, and engagement parties
-3. **PROACTIVELY suggest 2-3 specific next steps with dates** in your response
-4. Extract planning details, budget info, and tasks (including the tasks you suggest!)
-5. Return your response in this EXACT format:
-
-<response>Your natural, helpful response here</response>
-
-<extracted_data>
-{
-  "budget_items": [
-    {
-      "category": "venue|catering|flowers|photography|videography|music|cake|decorations|attire|invitations|favors|transportation|honeymoon|other",
-      "budgeted_amount": number or null,
-      "spent_amount": number or null,
-      "transaction_date": "YYYY-MM-DD or null",
-      "transaction_amount": number or null,
-      "transaction_description": "string or null",
-      "notes": "string or null"
-    }
-  ],
-  "tasks": [
-    {
-      "task_name": "string",
-      "task_description": "string or null",
-      "category": "venue|catering|flowers|photography|attire|invitations|decorations|transportation|legal|honeymoon|day_of|other or null",
-      "due_date": "YYYY-MM-DD or null",
-      "status": "not_started|in_progress|completed|cancelled or null",
-      "priority": "low|medium|high|urgent or null",
-      "notes": "string or null"
-    }
-  ],
-  "profile_summary": "2-3 sentence summary of the bestie's current planning focus, events being organized, and key responsibilities. Update this each time to reflect the full conversation context."
-}
-</extracted_data>
-
-EXTRACTION RULES FOR BESTIE CHAT:
-- budget_items: Extract mentions of party expenses, bridesmaid costs, event budgets
-  * "Spent $300 on bachelorette decorations" → {"category": "decorations", "spent_amount": 300, "transaction_amount": 300, "transaction_date": "today"}
-  * "Budgeted $2000 for bridal shower venue" → {"category": "venue", "budgeted_amount": 2000}
-  * "Bridesmaids dresses cost $150 each" → {"category": "attire", "transaction_amount": 150, "notes": "per bridesmaid"}
-- tasks: **CRITICAL** - Extract ALL tasks including:
-  * Tasks the user mentions
-  * **Tasks YOU suggest in your response** (this is key!)
-  * Example: If you say "You should book the venue by March 15th", extract: {"task_name": "Book bachelorette venue", "due_date": "2025-03-15", "status": "not_started", "priority": "high"}
-- profile_summary: **ALWAYS provide** - Summarize the bestie's planning activities and responsibilities
-  * Include: Events being planned (bachelorette, shower, etc.), current focus areas, key upcoming deadlines
-  * Example: "Planning a beach bachelorette party for March with a $2000 budget. Coordinating bridesmaid dress shopping and organizing a bridal shower. Currently researching venues and creating a guest list."
-  * Keep it concise but informative (2-3 sentences max)
-
-TASK GENERATION EXAMPLES:
-- User: "I'm thinking about a beach bachelorette"
-  YOU SAY: "Love it! Here's what you should do: 1) Research beach house rentals by Feb 1st, 2) Get a headcount by Feb 15th, 3) Book the place by March 1st"
-  YOU EXTRACT: [
-    {"task_name": "Research beach house rentals", "due_date": "2025-02-01", "status": "not_started", "priority": "high"},
-    {"task_name": "Get headcount for bachelorette", "due_date": "2025-02-15", "status": "not_started", "priority": "high"},
-    {"task_name": "Book beach house", "due_date": "2025-03-01", "status": "not_started", "priority": "high"}
-  ]
-
-IMPORTANT:
-- Today's date is ${new Date().toISOString().split('T')[0]}
-- Wedding date is ${weddingData.wedding_date || 'unknown'} - calculate deadlines working backwards from this!
-- Focus on extracting MOH/Best Man event planning data (bachelorette, shower, rehearsal dinner, etc.)
-- Only include sections that have data. Empty arrays [] are ok if nothing was mentioned
-- **ALWAYS generate tasks with specific due dates** when giving advice`
+          content: promptContent
         }]
       })
     });

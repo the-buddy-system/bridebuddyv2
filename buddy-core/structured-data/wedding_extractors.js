@@ -1,23 +1,33 @@
 // TODO: Inject domain enums via buddies/bride/domain.js
+import {
+  vendorTypeAliases as brideVendorTypeAliases,
+  vendorTypes as brideVendorTypes,
+  vendorStatuses as brideVendorStatuses,
+  budgetCategories as brideBudgetCategories,
+  taskCategories as brideTaskCategories,
+  taskStatuses as brideTaskStatuses,
+  taskPriorities as brideTaskPriorities
+} from '../../buddies/bride/domain.js';
 
-const VENDOR_TYPE_ALIASES = new Map(); // TODO: Inject domain enums via buddies/bride/domain.js
-const VENDOR_TYPES = new Set(); // TODO: Inject domain enums via buddies/bride/domain.js
-const VENDOR_STATUSES = new Set(); // TODO: Inject domain enums via buddies/bride/domain.js
-const BUDGET_CATEGORIES = new Map(); // TODO: Inject domain enums via buddies/bride/domain.js
-const TASK_CATEGORIES = new Map(); // TODO: Inject domain enums via buddies/bride/domain.js
-const TASK_STATUSES = new Set(); // TODO: Inject domain enums via buddies/bride/domain.js
-const TASK_PRIORITIES = new Set(); // TODO: Inject domain enums via buddies/bride/domain.js
+// TODO: Accept domain overrides when new buddies arrive.
+const VENDOR_TYPE_ALIASES = brideVendorTypeAliases;
+const VENDOR_TYPES = brideVendorTypes;
+const VENDOR_STATUSES = brideVendorStatuses;
+const BUDGET_CATEGORIES = brideBudgetCategories;
+const TASK_CATEGORIES = brideTaskCategories;
+const TASK_STATUSES = brideTaskStatuses;
+const TASK_PRIORITIES = brideTaskPriorities;
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\+?[0-9()[\]\s-]{7,}$/;
-const MAX_EXTRACTED_JSON_CHARS = 12000;
+export const MAX_EXTRACTED_JSON_CHARS = 12000;
 
-function vendorKey(type, name) {
+export function vendorKey(type, name) {
   return `${type}:${name.toLowerCase()}`;
 }
 
-function taskDeterministicId(name, dueDate) {
+export function taskDeterministicId(name, dueDate) {
   return `${name.toLowerCase()}::${dueDate || 'none'}`;
 }
 

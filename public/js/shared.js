@@ -8,7 +8,15 @@
 // ============================================================================
 
 import { config } from './config.js';
-import { textToHtml } from './security.js';
+// import { textToHtml } from './security.js';
+import { textToHtml } from '../../buddy-core/frontend/security.js';
+import {
+    initSupabase as initSupabaseCore,
+    getSupabase as getSupabaseCore,
+    getStoredSession,
+    storeSession,
+    clearSession
+} from '../../buddy-core/frontend/session.js';
 
 // ============================================================================
 // CONSTANTS
@@ -23,34 +31,16 @@ const SUPABASE_ANON_KEY = config.supabase.anonKey;
 // SUPABASE CLIENT
 // ============================================================================
 
-let supabaseClient = null;
-
 /**
  * Initialize and return Supabase client (singleton pattern)
  * @returns {Object} Supabase client instance
  */
-export function initSupabase() {
-    if (!supabaseClient) {
-        // Check for Supabase global - could be window.supabase or window.supabaseJs
-        const supabaseLib = window.supabase || window.supabaseJs;
-
-        if (!supabaseLib) {
-            console.error('Supabase SDK not loaded. Make sure the Supabase CDN script is included in your HTML.');
-            throw new Error('Supabase SDK not available. Please check that the Supabase CDN script is loaded.');
-        }
-
-        try {
-            supabaseClient = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-            if (!supabaseClient) {
-                throw new Error('createClient returned null or undefined');
-            }
-        } catch (err) {
-            console.error('Error creating Supabase client:', err);
-            throw new Error(`Failed to create Supabase client: ${err.message}`);
-        }
-    }
-    return supabaseClient;
+export function initSupabase(options = {}) {
+    return initSupabaseCore({
+        supabaseUrl: options.supabaseUrl || SUPABASE_URL,
+        supabaseAnonKey: options.supabaseAnonKey || SUPABASE_ANON_KEY,
+        supabaseLib: options.supabaseLib
+    });
 }
 
 /**
@@ -58,10 +48,7 @@ export function initSupabase() {
  * @returns {Object} Supabase client instance
  */
 export function getSupabase() {
-    if (!supabaseClient) {
-        return initSupabase();
-    }
-    return supabaseClient;
+    return getSupabaseCore();
 }
 
 // ============================================================================
@@ -104,12 +91,7 @@ export function updateUrlWithWeddingId(weddingId) {
  * @param {string} weddingId - Wedding ID
  */
 export function storeUserSession(userId, weddingId) {
-    if (userId) {
-        localStorage.setItem('user_id', userId);
-    }
-    if (weddingId) {
-        localStorage.setItem('wedding_id', weddingId);
-    }
+    storeSession({ userId, weddingId });
 }
 
 /**
@@ -117,18 +99,14 @@ export function storeUserSession(userId, weddingId) {
  * @returns {Object} Session object with userId and weddingId
  */
 export function getUserSession() {
-    return {
-        userId: localStorage.getItem('user_id'),
-        weddingId: localStorage.getItem('wedding_id')
-    };
+    return getStoredSession();
 }
 
 /**
  * Clear user session from localStorage
  */
 export function clearUserSession() {
-    localStorage.removeItem('user_id');
-    localStorage.removeItem('wedding_id');
+    clearSession();
 }
 
 /**

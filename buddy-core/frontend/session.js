@@ -2,6 +2,9 @@
 
 import { getSupabaseConfig } from '../config/index.js';
 
+const USER_ID_KEY = 'user_id';
+const WEDDING_ID_KEY = 'wedding_id';
+
 let supabaseClient = null;
 
 export function initSupabase(options = {}) {
@@ -43,13 +46,31 @@ export function getSupabase() {
 }
 
 export function getStoredSession() {
-  // Placeholder implementation.
+  return {
+    userId: typeof localStorage !== 'undefined' ? localStorage.getItem(USER_ID_KEY) : null,
+    weddingId: typeof localStorage !== 'undefined' ? localStorage.getItem(WEDDING_ID_KEY) : null
+  };
 }
 
-export function storeSession() {
-  // Placeholder implementation.
+export function storeSession({ userId, weddingId } = {}) {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+
+  if (userId) {
+    localStorage.setItem(USER_ID_KEY, userId);
+  }
+
+  if (weddingId) {
+    localStorage.setItem(WEDDING_ID_KEY, weddingId);
+  }
 }
 
 export function clearSession() {
-  // Placeholder implementation.
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+
+  localStorage.removeItem(USER_ID_KEY);
+  localStorage.removeItem(WEDDING_ID_KEY);
 }
