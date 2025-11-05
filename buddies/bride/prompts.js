@@ -1,6 +1,7 @@
 import { buildPrompt } from '../../buddy-core/prompts/templates.js';
 import { empathyStrings } from './domain.js';
 
+// BuddyOS Prompt Builder: combines domain tone + structured extraction schema
 // TODO: Adjust empathy tone parameters once Buddy Core emotional scaffolding is live.
 
 const weddingExtractionSchema = `<response>Your natural, conversational response here</response>
